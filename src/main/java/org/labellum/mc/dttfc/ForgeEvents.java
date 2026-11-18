@@ -2,9 +2,16 @@ package org.labellum.mc.dttfc;
 
 import com.dtteam.dynamictrees.DynamicTrees;
 import com.dtteam.dynamictrees.block.FutureBreakable;
+import com.dtteam.dynamictrees.block.branch.BasicBranchBlock;
 import com.dtteam.dynamictrees.config.DTConfigs;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.CreativeModeTab;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
@@ -58,15 +65,34 @@ public final class ForgeEvents
 
     public static void onCreativeTabs(BuildCreativeModeTabContentsEvent event)
     {
-        if (event.getTab() == TFCCreativeTabs.WOOD.tab().get())
+        final ResourceKey<CreativeModeTab> tabKey = event.getTabKey();
+        final boolean isFloraTab = tabKey.equals(TFCCreativeTabs.TFC_FLORA_CROPS.tab().getKey());
+        final boolean isBuildingTab = tabKey.equals(TFCCreativeTabs.TFC_BUILDING_BLOCKS.tab().getKey());
+        if (!isFloraTab && !isBuildingTab)
         {
-            BuiltInRegistries.ITEM.entrySet().forEach((entry) -> {
-                if (entry.getKey().location().getNamespace().equals(DTTFC.MOD_ID))
-                {
-                    event.accept(entry.getValue());
-                }
-            });
+            return;
         }
+
+        BuiltInRegistries.ITEM.entrySet().forEach((entry) -> {
+            if (!entry.getKey().location().getNamespace().equals(DTTFC.MOD_ID))
+            {
+                return;
+            }
+            final Item item = entry.getValue();
+            if (item == Items.AIR)
+            {
+                return;
+            }
+            final boolean isBranchItem = item instanceof BlockItem blockItem && blockItem.getBlock() instanceof BasicBranchBlock;
+            if ((isBranchItem && isBuildingTab) || (!isBranchItem && isFloraTab))
+            {
+                final ItemStack stack = item.getDefaultInstance();
+                if (!stack.isEmpty())
+                {
+                    event.accept(stack);
+                }
+            }
+        });
     }
 
     /* Stone axe break speeds: vanilla TFC 1.7: 12 seconds, 1.12: 9 seconds, 1.18: 6 seconds
